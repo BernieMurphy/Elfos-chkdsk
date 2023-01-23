@@ -6,22 +6,24 @@ chkdsk
 Disk 0:
 
 Type 1 filesystem
-
 Sector 0 checksum: BA93
-
 Source disk is 240 MB. Now scanning AUs ...
-
 1 MB is in use.
-
 Total AUs: 61440
-
 Free  AUs: 61207
 
 
 Disk 1:
+
 Type 1 filesystem
+
 Sector 0 checksum: BA93
+
 Source disk is 240 MB. Now scanning AUs ...
+
 2 MB is in use.
+
 Total AUs: 61440
+
 Free  AUs: 61177
+
