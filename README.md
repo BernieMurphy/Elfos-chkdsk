@@ -1,6 +1,7 @@
 # Elfos-chkdsk
 Chkdsk is a program that displays various statistics regarding an 1802 Elf-OS disk
-Sample output for a two disk system is shown below
+Sample output for a two disk system is shown below.
+
 chkdsk
 Disk 0:
 Type 1 filesystem
