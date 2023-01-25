@@ -16,7 +16,7 @@ d_idewrite: equ    044ah
 d_ideread:  equ    0447h
 
 disk0:     equ     0e0h                ; Elf disk 0
-disk1:     equ     0f0h                ; Elf disk 1
+disk1:     equ     0e1h                ; Elf disk 1
 
            org     2000h-6 
            dw      2000h               ; header, where program loads
@@ -73,8 +73,8 @@ readok1:   equ     $
            xri   1
            lbz   type1fs
            call  o_inmsg                ; else fail with error message
-           db    "Not a type 1 filesystem.",13,10
-           db    "Cannot continue",13,10,0
+           db    'Not a type 1 filesystem.',13,10
+           db    ' Cannot continue',13,10,0
            ret                        ; and return
          
 
@@ -83,7 +83,7 @@ type1fs:    equ   $                     ; a good file system type
             db    "Type 1 filesystem",13,10,0
 
 ; *********************************************************************
-; *** Now we compute a 16 bit checksum of sector 0 that we just read
+; *** Now we compute a 16 bit checksum of first 256 bytes of sector 0 
 ;**********************************************************************
            ldi   0
            phi   rd                     ; clear the check sum
@@ -91,7 +91,7 @@ type1fs:    equ   $                     ; a good file system type
            phi   rf
            sex   r7
            mov   r7,buffer              ; get address of sector buffer
-           ldi   02h                    ; loop counter is 512
+           ldi   01h                    ; loop counter is 256
            phi   rf
 sumloop:   glo   rd
            add                          ; perform add
@@ -106,7 +106,7 @@ sumloop:   glo   rd
            ghi   rf                     ; have we reached 512 count?                             
            lbnz   sumloop     
            call   o_inmsg
-           db    'Sector 0 checksum: ',0    
+           db    'Sector 0 bootloader checksum: ',0    
            mov   rf,cbuffer              
            call    f_hexout4            ; checksum in rd for hexout4 
            ldi   0
