@@ -1,4 +1,6 @@
 Chkdsk is a program that displays various statistics regarding an 1802 Elf-OS disk.
+Up 32 virtual disks and two physical disks are supported.
+
 Sample output for a two disk system is shown below. Note that this program will
 hang with earlier versions of Elf-OS if a disk is not present. Unlike the DOS
 version of chkdsk, the current version of this program does not detect file 
