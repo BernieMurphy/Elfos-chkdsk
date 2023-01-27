@@ -6,18 +6,24 @@
 ; *** without express written permission from the author.         ***
 ; *** 2023-01-22 B. Murphy Updated to support multiple drives     ***
 ; *** 2023-01-22 Also credits to D. Madole for section of code    ***
+; *** 2023-01-25 Updated to support up to 32 disks                ***
 ; *******************************************************************
+
+;********************************************************************
+;*** This program scan an Elf-OS real or vitual disks and reports ***
+;*** on what disks are present. Elf-OS build 226 or higher should ***
+;*** be used. Lower versions may cause this program to hang       ***
+;********************************************************************  
 
 #include    bios.inc
 #include    kernel.inc
 #include    ops.inc
 
-d_idewrite: equ    044ah
-d_ideread:  equ    0447h
-
-disk0:     equ     0e0h                ; Elf disk 0
-disk1:     equ     0e1h                ; Elf disk 1
-
+d_idewrite:equ    044ah
+d_ideread: equ    0447h
+maxdisks:  equ     32                  ; Maximum number of disks
+diskmask:  equ     0e0h                ; Drive numbers 0e0h-0FFh 01 forideread
+ 
            org     2000h-6 
            dw      2000h               ; header, where program loads
            dw      endrom-2000h        ; length of program to load
@@ -27,55 +33,69 @@ disk1:     equ     0e1h                ; Elf disk 1
 
 begin:     br      mainlp
            eever
-           db      'Credits Michael H. Riley, David Madole',0
+           db      'Updated: B. Murphy Credits: Michael H. Riley, David Madole',0
 
-  
-mainlp:    call f_inmsg
-           db      'Disk 0:',10,13,0 
-    
-           mov     rf,disknum         ; set up for disk 0
-           ldi      disk0
-           str     rf
+;********************************************************************
+;*** Loop through all the possible disks & scan if we find one   ****
+;******************************************************************** 
+mainlp:    equ     $               
            call    main
-           call    docrlf
-
-           call    f_inmsg
-           db      'Disk 1:',10,13,0 
-           mov     rf,disknum
-           ldi     disk1
-           str     rf
-           call    main
+           mov     rf,disknum          ; get disk number address
+           ldn     rf
+           ani     01fh                ; get number back to 0-31
+           adi     1                   ; get next disk number
+           str     rf                  ; and store it 
+           smi     maxdisks            ; have we done all the disks?
+           lbnz    mainlp              ; if not, go again
            ldi     0
            rtn                         ; return to os
 
+
 main:      mov     rf,buffer           ; for ideread
-           mov     r7,disknum          ; get disk number
-           ldn     r7               
+           mov     r7,disknum          ; get disk number 0-31
+           ldn     r7
+           adi     diskmask            ; convert for ideread               
            phi     r8
            ldi     0                   ; need to read sector 0
            plo     r8
            phi     r7
            plo     r7
-           call    d_ideread           ; call bios to read sector  lbdf
-           lbnf     readok1             ; read OK?
-           call    f_inmsg             ; disk not responding
-           db      'Not Present',13,10,0
+           call    d_ideread           ; call bios to read sector  
+           lbnf     readok1            ; read OK?
            rtn
 
-
-
 readok1:   equ     $
+           call    docrlf              ; add some space
+           call    f_inmsg             ; output first part of message
+           db      'Disk ',0
+           mov     rf,disknum          ; save  
+           ldn     rf
+           ani     01fh                ; turn number back to 0-31  
+           plo     rd
+           ldi     0
+           phi     rd
+           mov     rf,cbuffer  
+           call    f_uintout           ; output disk number
+           ldi     0 
+           str     rf                  ; store a terminator
+           mov     rf,cbuffer
+           call    o_msg               ; output disk number message
+           call    docrlf
+           mov     rf,disknum          ; get current disk number 0-31
+           ldn     rf
+           adi     diskmask            ; convert for rest of f_idereads
+           str     rf   
+
            ldi    (buffer+104h).1       ; get pointer to filesystem type
-            phi   rf
-            ldi   (buffer+104h).0
-            plo   rf
+           phi   rf
+           ldi   (buffer+104h).0
+           plo   rf
            ldn   rf                    ; compare to 1, proceed if so
            xri   1
            lbz   type1fs
            call  o_inmsg                ; else fail with error message
-           db    'Not a type 1 filesystem.',13,10
-           db    ' Cannot continue',13,10,0
-           ret                        ; and return
+           db    'Not a type 1 filesystem.',13,10,0
+           ret                          ; and return
          
 
 type1fs:    equ   $                     ; a good file system type
@@ -83,7 +103,7 @@ type1fs:    equ   $                     ; a good file system type
             db    "Type 1 filesystem",13,10,0
 
 ; *********************************************************************
-; *** Now we compute a 16 bit checksum of first 256 bytes of sector 0 
+; *** Compute a 16 bit checksum of first 256 bytes of sector 0      ***
 ;**********************************************************************
            ldi   0
            phi   rd                     ; clear the check sum
@@ -91,7 +111,7 @@ type1fs:    equ   $                     ; a good file system type
            phi   rf
            sex   r7
            mov   r7,buffer              ; get address of sector buffer
-           ldi   01h                    ; loop counter is 256
+           ldi   1                      ; loop counter is 256
            phi   rf
 sumloop:   glo   rd
            add                          ; perform add
@@ -99,11 +119,9 @@ sumloop:   glo   rd
            ghi   rd                     ; get msb byte
            adci  0                      ; do add with carry
            phi   rd                     ; and save result
-
            inc   r7                     ; increment buffer address
-           ghi   r7                     ;  and tuck away for next loop
            dec   rf                     ; lower loop count 
-           ghi   rf                     ; have we reached 512 count?                             
+           ghi   rf                     ; have we reached 256 count?                             
            lbnz   sumloop     
            call   o_inmsg
            db    'Sector 0 bootloader checksum: ',0    
@@ -115,7 +133,7 @@ sumloop:   glo   rd
            dec   rf
            dec   rf
            dec   rf
-           call    o_msg                 ; output the 4 char hex checksum
+           call  o_msg                   ; output the 4 char hex checksum
            call  docrlf                  ; and finish the line
 
  
@@ -164,18 +182,17 @@ sumloop:   glo   rd
             db    ' MB. Now scanning AUs ...',13,10,0
 
 ;************************************************************************
-; *** Scan the AU allocation table in the source disk, counting how
-; *** many are actually in use, and building a bitmap in RAM of those
-; *** we need to copy. A bitmap of all AUs would have 256 MB divided
-; *** by 4 KB is 64K entries... at 8 bits per byte, this is 8KB of
-; *** memory, which is resonable on any Elf/OS system.
+; *** Scan the AU allocation table in the source disk, counting how   ***
+; *** many are actually in use, and building a bitmap in RAM of those ***
+; *** we need to copy. A bitmap of all AUs would have 256 MB divided  ***
+; *** by 4 KB is 64K entries... at 8 bits per byte, this is 8KB of    ***
+; *** memory, which is resonable on any Elf/OS system.                ***
 ;*************************************************************************
             ldi   0                     ; clear current au and used count
             plo   r9
             phi   r9
             plo   ra
             phi   ra
-
             mov  rc,bitmap
 
 scnloop:    glo   ra                    ; load a sector every 256 aus
@@ -189,7 +206,7 @@ scnloop:    glo   ra                    ; load a sector every 256 aus
             adci  0
             phi   r7
    
-             mov  rf,disknum            ; get disk we are checking number
+            mov  rf,disknum            ; get disk we are checking number
             ldn   rf  
             phi   r8
 
@@ -341,14 +358,14 @@ secloop:   mov     rf,buffer
            ldi     0
            plo     rb
 entloop:   lda     rf                  ; get byte from table
-           bnz     used                ; jump if it is used
+           lbnz     used                ; jump if it is used
            ldn     rf                  ; next byte
            lbnz     used
            inc     rd
 used:      dec     rb                  ; decrement entry count
            inc     rf                  ; move to next entry
            glo     rb                  ; check if done with sector
-           bnz     entloop             ; jump if more to go
+           lbnz     entloop             ; jump if more to go
            ghi     rb                  ; check high byte as well
            lbnz     entloop
            inc     r7                  ; increment sector
@@ -444,13 +461,14 @@ docrlf:    call    f_inmsg
 
 numaus:    db      'Total AUs: ',0
 freeaus:   db      'Free  AUs: ',0
+disknum:   db      0                   ; disk number 
 
 endrom:    equ     $
 
 .suppress
 buffer:    ds      512
 bitmap:    ds      8192
-disknum:   ds      1     
+    
 cbuffer:   ds      40
 
            end     begin
