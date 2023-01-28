@@ -38,8 +38,11 @@ begin:     br      mainlp
 ;********************************************************************
 ;*** Loop through all the possible disks & scan if we find one   ****
 ;******************************************************************** 
-mainlp:    equ     $               
-           call    main
+mainlp:    equ     $
+           bn4     noinef4             ; check if input/ef4 asserted
+           rtn
+                   
+noinef4:   call    main
            mov     rf,disknum          ; get disk number address
            ldn     rf
            ani     01fh                ; get number back to 0-31
