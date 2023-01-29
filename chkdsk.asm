@@ -1,19 +1,20 @@
-; *******************************************************************
-; *** This software is copyright 2004 by Michael H Riley          ***
-; *** You have permission to use, modify, copy, and distribute    ***
-; *** this software so long as this copyright notice is retained. ***
-; *** This software may not be used in commercial applications    ***
-; *** without express written permission from the author.         ***
-; *** 2023-01-22 B. Murphy Updated to support multiple drives     ***
-; *** 2023-01-22 Also credits to D. Madole for section of code    ***
-; *** 2023-01-25 Updated to support up to 32 disks                ***
-; *******************************************************************
+;--------------------------------------------------------------------------
+; Scan Elf-OS real or vitual disks and report on what disks are present.  
+; Elf-OS build 226 or higher should be used. Lower versions of Elf-OS may  
+; cause this program to  hang. 
+;
+; Copyright 2023 by Bernard Murphy
+;
+; Based on code from the Elfos-clone program  
+; Written by David Madole
+; Copyright 2022 by David Madole
+;
 
-;********************************************************************
-;*** This program scans Elf-OS real or vitual disks and reports   ***
-;*** on what disks are present. Elf-OS build 226 or higher should ***
-;*** be used. Lower versions may cause this program to hang.      ***
-;********************************************************************  
+; Based on code from the Elfos-free program  
+; Written by Michael H R;ley
+; Copyright 2004 by Micheal H Riley
+;
+;-------------------------------------------------------------------------- 
 
 #include    bios.inc
 #include    kernel.inc
@@ -22,7 +23,7 @@
 d_idewrite:equ    044ah
 d_ideread: equ    0447h
 maxdisks:  equ     32                  ; Maximum number of disks
-diskmask:  equ     0e0h                ; Drive numbers 0e0h-0FFh 01 forideread
+diskmask:  equ     0e0h                ; Drive numbers 0e0h-0FFh 01 for ideread
  
            org     2000h-6 
            dw      2000h               ; header, where program loads
@@ -33,11 +34,11 @@ diskmask:  equ     0e0h                ; Drive numbers 0e0h-0FFh 01 forideread
 
 begin:     br      mainlp
            eever
-           db      'Updated: B. Murphy Credits: Michael H. Riley, David Madole',0
+           db      'B. Murphy See: https://github.com/BernieMurphy/Elfos-chkdsk',0
 
-;********************************************************************
-;*** Loop through all the possible disks & scan if we find one   ****
-;******************************************************************** 
+;
+;Loop through all the possible disks (0-31) & scan if we find one   
+;
 mainlp:    equ     $
            bn4     noinef4             ; check if input/ef4 asserted
            rtn
@@ -104,10 +105,11 @@ readok1:   equ     $
 type1fs:    equ   $                     ; a good file system type
             call   o_inmsg
             db    "Type 1 filesystem",13,10,0
-
-; *********************************************************************
-; *** Compute a 16 bit checksum of first 256 bytes of sector 0      ***
-;**********************************************************************
+;
+; 
+;  Compute a 16 bit checksum of the first 256 bytes of sector 0      
+;
+;
            ldi   0
            phi   rd                     ; clear the check sum
            plo   rd
@@ -184,13 +186,13 @@ sumloop:   glo   rd
             dw    o_inmsg               ; tell about size and now scan
             db    ' MB. Now scanning AUs ...',13,10,0
 
-;************************************************************************
-; *** Scan the AU allocation table in the source disk, counting how   ***
-; *** many are actually in use, and building a bitmap in RAM of those ***
-; *** we need to copy. A bitmap of all AUs would have 256 MB divided  ***
-; *** by 4 KB is 64K entries... at 8 bits per byte, this is 8KB of    ***
-; *** memory, which is resonable on any Elf/OS system.                ***
-;*************************************************************************
+;
+; Scan the AU allocation table in the source disk, counting how   
+; many are actually in use, and building a bitmap in RAM of those 
+; we need to copy. A bitmap of all AUs would have 256 MB divided       
+; by 4 KB is 64K entries... at 8 bits per byte, this is 8KB of   
+; memory, which is resonable on any Elf/OS system.               
+;
             ldi   0                     ; clear current au and used count
             plo   r9
             phi   r9
@@ -227,8 +229,8 @@ scnloop:    glo   ra                    ; load a sector every 256 aus
             ldi   buffer.0
             plo   rf
 
-          ; Loop through each 16-bit au entry in the sector and count and
-          ; mark in bitmap those that are in use.
+; Loop through each 16-bit au entry in the sector and count and
+; mark in bitmap those that are in use.
 
 gotsect:    lda   rf                    ; if msb is not zero, it's in use
             lbnz  inuse
@@ -391,8 +393,8 @@ used:      dec     rb                  ; decrement entry count
            call    docrlf
            rtn                         ; return to caller
 
-;  If a disk error occurs along the way, output an error message
-;  indicating where and abort the mission.
+;If a disk error occurs along the way, output an error message
+;indicating where and abort the mission.
 
 failed:     sep   scall                 ; output error message
             dw    o_inmsg
