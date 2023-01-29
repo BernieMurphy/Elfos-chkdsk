@@ -10,9 +10,9 @@
 ; *******************************************************************
 
 ;********************************************************************
-;*** This program scan an Elf-OS real or vitual disks and reports ***
+;*** This program scans Elf-OS real or vitual disks and reports   ***
 ;*** on what disks are present. Elf-OS build 226 or higher should ***
-;*** be used. Lower versions may cause this program to hang       ***
+;*** be used. Lower versions may cause this program to hang.      ***
 ;********************************************************************  
 
 #include    bios.inc
@@ -124,7 +124,7 @@ sumloop:   glo   rd
            phi   rd                     ; and save result
            inc   r7                     ; increment buffer address
            dec   rf                     ; lower loop count 
-           ghi   rf                     ; have we reached 256 count?                             
+           glo   rf                     ; have we reached 256 count?                             
            lbnz   sumloop     
            call   o_inmsg
            db    'Sector 0 bootloader checksum: ',0    
