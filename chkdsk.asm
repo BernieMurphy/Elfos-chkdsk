@@ -99,7 +99,8 @@ readok1:   equ     $
            lbz   type1fs
            call  o_inmsg                ; else fail with error message
            db    'Not a type 1 filesystem.',13,10,0
-           ret                          ; and return
+           smi   0                      ; error return
+           rtn                          ; and return
          
 
 type1fs:    equ   $                     ; a good file system type
